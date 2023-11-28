@@ -44,6 +44,7 @@ func New(p string, options ...Option) (*RotateLogs, error) {
 	var maxAge time.Duration
 	var handler Handler
 	var forceNewFile bool
+	var noFilenameTruncate bool
 
 	for _, o := range options {
 		switch o.Name() {
@@ -72,6 +73,8 @@ func New(p string, options ...Option) (*RotateLogs, error) {
 			handler = o.Value().(Handler)
 		case optkeyForceNewFile:
 			forceNewFile = true
+		case optKeyNoFileNameTruncate:
+			noFilenameTruncate = true
 		}
 	}
 
@@ -85,16 +88,17 @@ func New(p string, options ...Option) (*RotateLogs, error) {
 	}
 
 	return &RotateLogs{
-		clock:         clock,
-		eventHandler:  handler,
-		globPattern:   globPattern,
-		linkName:      linkName,
-		maxAge:        maxAge,
-		pattern:       pattern,
-		rotationTime:  rotationTime,
-		rotationSize:  rotationSize,
-		rotationCount: rotationCount,
-		forceNewFile:  forceNewFile,
+		clock:              clock,
+		eventHandler:       handler,
+		globPattern:        globPattern,
+		linkName:           linkName,
+		maxAge:             maxAge,
+		pattern:            pattern,
+		rotationTime:       rotationTime,
+		rotationSize:       rotationSize,
+		rotationCount:      rotationCount,
+		forceNewFile:       forceNewFile,
+		noFileNameTruncate: noFilenameTruncate,
 	}, nil
 }
 
@@ -155,7 +159,12 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		var name string
 		for {
 			if generation == 0 {
-				name = filename
+				if rl.curBaseFn == "" && rl.noFileNameTruncate {
+					//first file
+					name = fileutil.GenerateFn(rl.pattern, rl.clock, 0)
+				} else {
+					name = filename
+				}
 			} else {
 				name = fmt.Sprintf("%s.%d", filename, generation)
 			}
