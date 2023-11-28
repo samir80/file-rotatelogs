@@ -128,6 +128,11 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	// to log to, which may be newer than rl.currentFilename
 	baseFn := fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
 	filename := baseFn
+	if rl.curBaseFn == "" && rl.noFileNameTruncate {
+		//first file
+		filename = fileutil.GenerateFn(rl.pattern, rl.clock, 0)
+	}
+
 	var forceNewFile bool
 
 	fi, err := os.Stat(rl.curFn)
@@ -159,12 +164,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		var name string
 		for {
 			if generation == 0 {
-				if rl.curBaseFn == "" && rl.noFileNameTruncate {
-					//first file
-					name = fileutil.GenerateFn(rl.pattern, rl.clock, 0)
-				} else {
-					name = filename
-				}
+				name = filename
 			} else {
 				name = fmt.Sprintf("%s.%d", filename, generation)
 			}
